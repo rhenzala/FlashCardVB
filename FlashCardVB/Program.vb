@@ -9,16 +9,57 @@ Module Program
 End Module
 
 Public Class FlashCard
-    Public Property Question As String
-    Public Property Answer As String
-    Public Property LastReviewDate As DateTime?
-    Public Property TimesReviewed As Integer
+    ' Add parameterless constructor for JSON deserialization
+    Public Sub New()
+    End Sub
 
     Public Sub New(question As String, answer As String)
         Me.Question = question
         Me.Answer = answer
         Me.TimesReviewed = 0
+        Me.LastReviewDate = Nothing
     End Sub
+
+    ' Add proper property definitions
+    Private _question As String
+    Public Property Question As String
+        Get
+            Return _question
+        End Get
+        Set(value As String)
+            _question = value
+        End Set
+    End Property
+
+    Private _answer As String
+    Public Property Answer As String
+        Get
+            Return _answer
+        End Get
+        Set(value As String)
+            _answer = value
+        End Set
+    End Property
+
+    Private _lastReviewDate As DateTime?
+    Public Property LastReviewDate As DateTime?
+        Get
+            Return _lastReviewDate
+        End Get
+        Set(value As DateTime?)
+            _lastReviewDate = value
+        End Set
+    End Property
+
+    Private _timesReviewed As Integer
+    Public Property TimesReviewed As Integer
+        Get
+            Return _timesReviewed
+        End Get
+        Set(value As Integer)
+            _timesReviewed = value
+        End Set
+    End Property
 End Class
 
 Public Class FlashCardApp
@@ -100,7 +141,7 @@ Public Class FlashCardApp
                 Console.WriteLine($"Question: {cards(i).Question}")
                 Console.WriteLine($"Answer: {cards(i).Answer}")
                 Console.WriteLine($"Times Reviewed: {cards(i).TimesReviewed}")
-                Console.WriteLine($"Last Review: {If(cards(i).LastReviewDate, "Never")}")
+                Console.WriteLine($"Last Review: {If(cards(i).LastReviewDate.HasValue, cards(i).LastReviewDate.Value.ToString(), "Never")}")
                 Console.WriteLine()
             Next
         End If
@@ -147,7 +188,13 @@ Public Class FlashCardApp
 
     Private Sub SaveCards()
         Try
-            Dim jsonString As String = JsonSerializer.Serialize(cards)
+            ' Configure JSON serializer options
+            Dim options As New JsonSerializerOptions With {
+                .WriteIndented = True
+            }
+
+            ' Serialize and save
+            Dim jsonString As String = JsonSerializer.Serialize(cards, options)
             File.WriteAllText(fileName, jsonString)
             Console.WriteLine("Cards saved successfully!")
         Catch ex As Exception
@@ -161,11 +208,20 @@ Public Class FlashCardApp
     Private Sub LoadCards()
         Try
             If File.Exists(fileName) Then
+                ' Configure JSON deserializer options
+                Dim options As New JsonSerializerOptions With {
+                    .PropertyNameCaseInsensitive = True
+                }
+
+                ' Read and deserialize
                 Dim jsonString As String = File.ReadAllText(fileName)
-                Dim loadedCards = JsonSerializer.Deserialize(Of List(Of FlashCard))(jsonString)
-                cards.Clear()
-                cards.AddRange(loadedCards)
-                Console.WriteLine("Cards loaded successfully!")
+                Dim loadedCards = JsonSerializer.Deserialize(Of List(Of FlashCard))(jsonString, options)
+
+                If loadedCards IsNot Nothing Then
+                    cards.Clear()
+                    cards.AddRange(loadedCards)
+                    Console.WriteLine("Cards loaded successfully!")
+                End If
             End If
         Catch ex As Exception
             Console.WriteLine($"Error loading cards: {ex.Message}")
